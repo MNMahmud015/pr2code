@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR to Savings — ACI Supply Chain (Engineering Procurement)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --ink:#1c1f26;
+    --paper:#17093c;
+    --panel:#ffffff;
+    --red:#c8102e;
+    --red-dark:#9c0c24;
+    --steel:#44515f;
+    --steel-soft:#7c8794;
+    --line:#d9d3c4;
+    --good:#2f6d4f;
+    --warn:#a15b16;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* --- background blueprint grid --- */
+  .grid-bg{
+    position:fixed; inset:0; z-index:-1;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:36px 36px;
+    opacity:0.35;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 90%);
+  }
+
+  a{color:inherit;}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 6vw;
+    border-bottom:1px solid var(--line);
+    background:rgba(238, 246, 238, 0.9);
+    backdrop-filter:blur(6px);
+    position:sticky; top:0; z-index:10;
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-mark{
+    width:40px; height:40px; background: #36a16a;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:16px; letter-spacing:0.02em;
+    flex-shrink:0;
+  }
+  .brand-text{line-height:1.15;}
+  .brand-text .name{font-weight:700; font-size:17px; letter-spacing:0.01em;}
+  .brand-text .div{font-size:12.5px; color:var(--steel-soft);}
+  .header-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px; color:var(--steel-soft);
+    text-align:right; line-height:1.5;
+  }
+
+  /* ---------- hero ---------- */
+  .hero{
+    padding:76px 6vw 56px;
+    max-width:1180px; margin:0 auto;
+  }
+  .hero-kicker{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px; color:var(--red);
+    margin:0 0 18px;
+  }
+  .hero h1{
+    font-size:clamp(32px, 4.4vw, 54px);
+    font-weight:600;
+    line-height:1.08;
+    letter-spacing:-0.01em;
+    margin:0 0 22px;
+    
+    color: #d6dcdb;
+  }
+  .hero p{
+    font-size:17px; line-height:1.6;
+    color:var(--steel);
+    margin:0;
+    color: #f9f9f9;
+  }
+
+  /* ---------- pipeline diagram ---------- */
+  .pipeline{
+    max-width:1180px; margin:0 auto;
+    padding:0 6vw 60px;
+  }
+  .pipeline-track{
+    display:flex; align-items:stretch;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .pipe-step{
+    flex:1; padding:22px 18px; position:relative;
+    border-right:1px solid var(--line);
+  }
+  .pipe-step:last-child{border-right:none;}
+  .pipe-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px; color:#ede9ea;
+    margin-bottom:10px;
+  }
+  .pipe-step h3{font-size:14.5px; font-weight:600; margin:0 0 6px; color: #e2e3e8;}
+  .pipe-step p{font-size:12.5px; color:var(--steel-soft); margin:0; line-height:1.5;}
+  .pipe-step[data-active="true"]{background:rgba(200,16,46,0.045);}
+  .pipe-step[data-active="true"] .pipe-num{color:var(--good);}
+
+  /* ---------- main layout ---------- */
+  main{max-width:1180px; margin:0 auto; padding:0 6vw 100px; display:grid; grid-template-columns:1fr; gap:28px;}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    position:relative;
+  }
+  .panel-corner{
+    position:absolute; width:9px; height:9px;
+    border-color:var(--steel-soft); border-style:solid; border-width:0;
+  }
+  .panel-corner.tl{top:-1px; left:-1px; border-top-width:2px; border-left-width:2px;}
+  .panel-corner.tr{top:-1px; right:-1px; border-top-width:2px; border-right-width:2px;}
+  .panel-corner.bl{bottom:-1px; left:-1px; border-bottom-width:2px; border-left-width:2px;}
+  .panel-corner.br{bottom:-1px; right:-1px; border-bottom-width:2px; border-right-width:2px;}
+
+  .panel-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding:18px 26px; border-bottom:1px solid var(--line);
+  }
+  .panel-head h2{font-size:15px; font-weight:600; margin:0;}
+  .panel-head .ref{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--steel-soft);}
+  .panel-body{padding:26px;}
+
+  /* ---------- dropzone ---------- */
+  #dropzone{
+    border:1.5px dashed var(--steel-soft);
+    padding:46px 24px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  #dropzone.drag{border-color:var(--red); background:rgba(200,16,46,0.04);}
+  #dropzone .icon{
+    width:46px; height:46px; margin:0 auto 16px;
+    border:1.5px solid var(--steel-soft);
+    display:flex; align-items:center; justify-content:center;
+  }
+  #dropzone .icon svg{width:20px; height:20px;}
+  #dropzone .primary{font-size:15.5px; font-weight:600; margin:0 0 6px;}
+  #dropzone .secondary{font-size:13px; color:var(--steel-soft); margin:0;}
+  #dropzone .secondary .browse{color:var(--red); text-decoration:underline; cursor:pointer;}
+  #fileInput{display:none;}
+
+  .file-chip{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+  }
+  .file-chip .fname{font-weight:500;}
+  .file-chip .fmeta{color:var(--steel-soft); margin-top:2px; font-size:11.5px;}
+  .file-chip .remove{cursor:pointer; color:var(--red); font-size:12px; border:1px solid var(--red); padding:4px 10px; background:none; font-family:inherit;}
+  .file-chip .remove:hover{background:var(--red); color:#fff;}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px; font-weight:600;
+    padding:13px 26px;
+    border:none; cursor:pointer;
+    display:inline-flex; align-items:center; gap:10px;
+    transition:background .15s ease, opacity .15s ease;
+  }
+  .btn-primary{background:var(--red); color:#fff;}
+  .btn-primary:hover:not(:disabled){background:var(--red-dark);}
+  .btn-primary:disabled{opacity:0.35; cursor:not-allowed;}
+  .btn-ghost{background:none; border:1px solid var(--ink); color:var(--ink);}
+  .btn-ghost:hover{background:var(--ink); color:#fff;}
+  .btn svg{width:16px; height:16px; flex-shrink:0;}
+
+  /* ---------- status / log ---------- */
+  #statusLine{
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+    color:var(--steel-soft); margin-top:14px; min-height:18px;
+  }
+  #statusLine.err{color:var(--red);}
+  #statusLine.ok{color:var(--good);}
+
+  /* ---------- results ---------- */
+  .results{display:none;}
+  .results.show{display:block;}
+
+  .spec-sheet{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    border-top:1px solid var(--line);
+  }
+  .spec{
+    padding:22px 24px;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .spec .label{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    color:var(--steel-soft); text-transform:lowercase;
+    margin-bottom:8px;
+  }
+  .spec .value{font-size:24px; font-weight:600; font-family:'IBM Plex Mono',monospace;}
+  .spec .value.red{color:var(--red);}
+  .spec .value.good{color:var(--good);}
+
+  .warn-box{
+    margin-top:18px; padding:14px 18px;
+    border-left:3px solid var(--warn); background:rgba(161,91,22,0.06);
+    font-size:13px; color:var(--warn); display:none;
+  }
+  .warn-box.show{display:block;}
+  .warn-box ul{margin:8px 0 0; padding-left:18px;}
+
+  table.preview{
+    width:100%; border-collapse:collapse; font-size:12.5px;
+    font-family:'IBM Plex Mono',monospace;
+    margin-top:20px;
+  }
+  table.preview th{
+    text-align:left; padding:8px 10px; border-bottom:1px solid var(--ink);
+    font-weight:600; white-space:nowrap; font-size:11px; color:var(--steel);
+  }
+  table.preview td{
+    padding:8px 10px; border-bottom:1px solid var(--line);
+    white-space:nowrap; max-width:220px; overflow:hidden; text-overflow:ellipsis;
+  }
+  .preview-wrap{overflow-x:auto; border:1px solid var(--line);}
+  .preview-note{font-size:11.5px; color:var(--steel-soft); margin-top:8px;}
+
+  .download-bar{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;
+    margin-top:26px; padding-top:26px; border-top:1px solid var(--line);
+  }
+  .download-info .fname{font-family:'IBM Plex Mono',monospace; font-size:13.5px; font-weight:600;}
+  .download-info .fsub{font-size:12px; color:var(--steel-soft); margin-top:3px;}
+
+  /* ---------- column reference ---------- */
+  .colref{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:1px; background:var(--line);
+    border:1px solid var(--line);
+  }
+  .colref div{background:var(--panel); padding:12px 16px; font-size:12.5px;}
+  .colref .k{font-family:'IBM Plex Mono',monospace; color:var(--red); font-weight:600; margin-right:8px;}
+
+  footer{
+    padding:30px 6vw; border-top:1px solid var(--line);
+    font-size:12px; color:var(--steel-soft);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+
+  @media (max-width:760px){
+    .pipeline-track{flex-direction:column;}
+    .pipe-step{border-right:none; border-bottom:1px solid var(--line);}
+    .pipe-step:last-child{border-bottom:none;}
+    header{padding:18px 5vw;}
+    .hero{padding:48px 5vw 40px;}
+    main{padding:0 5vw 70px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">ACI</div>
+    <div class="brand-text">
+      <div class="name">Advanced Chemical Industries</div>
+      <div class="div">Supply Chain (Engineering Procurement)</div>
+    </div>
+  </div>
+  <div class="header-tag">TOOL&nbsp;/&nbsp;PR–TO–SAVINGS<br>REV.&nbsp;1.0</div>
+</header>
+
+<section class="hero">
+  <h1>Zero Manual Data Entry. Instant Savings Analysis from Every Requisition </h1>
+  <p>No copy-paste pain, no spreadsheet gymnastics. Just upload, grab your report, and let your boss think you spent all afternoon on it! </p>
+</section>
+
+<section class="pipeline">
+  <div class="pipeline-track">
+    <div class="pipe-step" data-active="true" id="pipe-1">
+      <div class="pipe-num">01</div>
+      <h3>Upload</h3>
+      <p>Drop the RequisitionStatusWithSavings workbook (.xlsx).</p>
+    </div>
+    <div class="pipe-step" id="pipe-2">
+      <div class="pipe-num">02</div>
+      <h3>Parse &amp; clean</h3>
+      <p>Reads fixed columns A–AT, strips currency symbols, drops blank rows.</p>
+    </div>
+    <div class="pipe-step" id="pipe-3">
+      <div class="pipe-num">03</div>
+      <h3>Group</h3>
+      <p>Combines line items by requisition + PO number, joins vendors and raisers.</p>
+    </div>
+    <div class="pipe-step" id="pipe-4">
+      <div class="pipe-num">04</div>
+      <h3>Compute</h3>
+      <p>Writes live formulas for savings and % savings, per row.</p>
+    </div>
+    <div class="pipe-step" id="pipe-5">
+      <div class="pipe-num">05</div>
+      <h3>Export</h3>
+      <p>Generate and download Enamul Bhai’s complete monthly summary report</p>
+    </div>
+  </div>
+</section>
+
+<main>
+
+  <!-- Upload panel -->
+  <div class="panel">
+    <span class="panel-corner tl"></span><span class="panel-corner tr"></span>
+    <span class="panel-corner bl"></span><span class="panel-corner br"></span>
+    <div class="panel-head">
+      <h2>Slid anything else (except formatted PR to Saving .xlsx File) into my zone,
+
+       And I’ll choke, spit, and leave you alone!</h2>
+      <span class="ref">.xlsx only</span>
+    </div>
+    <div class="panel-body">
+
+      <div id="dropzone">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0-12 4 4m-4-4-4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        </div>
+        <p class="primary">Drop your PR file here</p>
+        <p class="secondary">or <span class="browse">browse from your computer</span></p>
+        <input type="file" id="fileInput" accept=".xlsx,.xls">
+      </div>
+
+      <div id="fileChipWrap" style="display:none; margin-top:14px;">
+        <div class="file-chip">
+          <div>
+            <div class="fname" id="chipName"></div>
+            <div class="fmeta" id="chipMeta"></div>
+          </div>
+          <button class="remove" id="chipRemove">remove</button>
+        </div>
+      </div>
+
+      <div style="margin-top:22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="processBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          Generate savings report
+        </button>
+        <div id="statusLine"></div>
+      </div>
+
+      <div class="warn-box" id="warnBox">
+        <strong>Some rows needed attention:</strong>
+        <ul id="warnList"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results panel -->
+  <div class="panel results" id="resultsPanel">
+    <span class="panel-corner tl"></span><span class="panel-corner tr"></span>
+    <span class="panel-corner bl"></span><span class="panel-corner br"></span>
+    <div class="panel-head">
+      <h2>Report summary</h2>
+      <span class="ref" id="resultsRef"></span>
+    </div>
+
+    <div class="spec-sheet" id="specSheet"></div>
+
+    <div class="panel-body">
+      <div class="preview-wrap">
+        <table class="preview" id="previewTable"></table>
+      </div>
+      <p class="preview-note">Showing first 8 grouped rows. Full report contains all rows, with live <span class="mono">Savings</span> and <span class="mono">% of Savings</span> formulas.</p>
+
+      <div class="download-bar">
+        <div class="download-info">
+          <div class="fname" id="dlFileName">Boss_Report_Savings_Ready.xlsx</div>
+          <div class="fsub">Formulas recalculate automatically when opened in Excel.</div>
+        </div>
+        <button class="btn btn-primary" id="downloadBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Download report
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column reference panel -->
+  <div class="panel">
+    <span class="panel-corner tl"></span><span class="panel-corner tr"></span>
+    <span class="panel-corner bl"></span><span class="panel-corner br"></span>
+    <div class="panel-head">
+      <h2>Column mapping</h2>
+      <span class="ref">source → report</span>
+    </div>
+    <div class="panel-body">
+      <div class="colref">
+        <div><span class="k">A</span>Requisition number</div>
+        <div><span class="k">B</span>Requisition date</div>
+        <div><span class="k">H</span>Item name</div>
+        <div><span class="k">U</span>Quoted price</div>
+        <div><span class="k">V</span>Negotiated price</div>
+        <div><span class="k">Y</span>PO number</div>
+        <div><span class="k">Z</span>PO date</div>
+        <div><span class="k">AJ</span>Vendor name</div>
+        <div><span class="k">AT</span>Raiser</div>
+      </div>
+      <p class="preview-note" style="margin-top:14px;">Grouping key is requisition number + PO number, so multi-line requisitions collapse into one report row with pricing summed and vendors/items joined.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <span>PR to Savings — internal tool, processed entirely in your browser. No file leaves this device.</span>
+  <span>ACI Supply Chain Engineering</span>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileChipWrap = document.getElementById('fileChipWrap');
+  const chipName = document.getElementById('chipName');
+  const chipMeta = document.getElementById('chipMeta');
+  const chipRemove = document.getElementById('chipRemove');
+  const processBtn = document.getElementById('processBtn');
+  const statusLine = document.getElementById('statusLine');
+  const warnBox = document.getElementById('warnBox');
+  const warnList = document.getElementById('warnList');
+  const resultsPanel = document.getElementById('resultsPanel');
+  const resultsRef = document.getElementById('resultsRef');
+  const specSheet = document.getElementById('specSheet');
+  const previewTable = document.getElementById('previewTable');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const dlFileName = document.getElementById('dlFileName');
+
+  let currentFile = null;
+  let outputWorkbookBlob = null;
+  let outputFileName = 'Boss_Report_Savings_Ready.xlsx';
+
+  // ---------- helpers ----------
+
+  function colIdx(letter){
+    letter = letter.toUpperCase();
+    let num = 0;
+    for (const c of letter){
+      if (c >= 'A' && c <= 'Z') num = num * 26 + (c.charCodeAt(0) - 64);
+    }
+    return num - 1;
+  }
+
+  function setActivePipe(step){
+    for (let i=1;i<=5;i++){
+      document.getElementById('pipe-'+i).setAttribute('data-active', i<=step ? 'true':'false');
+    }
+  }
+
+  function setStatus(msg, kind){
+    statusLine.textContent = msg;
+    statusLine.className = kind ? kind : '';
+  }
+
+  function cleanNumber(raw){
+    if (raw === null || raw === undefined) return 0;
+    const s = String(raw).replace(/[^\d.\-]/g, '');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function cleanText(raw){
+    if (raw === null || raw === undefined) return '';
+    const s = String(raw).trim();
+    return s;
+  }
+
+  function isBlankToken(s){
+    return s === '' || s.toLowerCase() === 'nan' || s.toLowerCase() === 'none' || s === 'undefined';
+  }
+
+  // ---------- file selection ----------
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => {
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  });
+  chipRemove.addEventListener('click', () => {
+    currentFile = null;
+    fileInput.value = '';
+    fileChipWrap.style.display = 'none';
+    dropzone.style.display = 'block';
+    processBtn.disabled = true;
+    setStatus('');
+    resultsPanel.classList.remove('show');
+    setActivePipe(1);
+  });
+
+  function handleFile(file){
+    const okExt = /\.(xlsx|xls)$/i.test(file.name);
+    if (!okExt){
+      setStatus('That file type isn\'t supported — upload an .xlsx or .xls workbook.', 'err');
+      return;
+    }
+    currentFile = file;
+    chipName.textContent = file.name;
+    chipMeta.textContent = (file.size/1024).toFixed(1) + ' KB';
+    fileChipWrap.style.display = 'block';
+    dropzone.style.display = 'none';
+    processBtn.disabled = false;
+    setStatus('Ready to process.', 'ok');
+    resultsPanel.classList.remove('show');
+    setActivePipe(1);
+  }
+
+  // ---------- core processing ----------
+
+  processBtn.addEventListener('click', () => {
+    if (!currentFile) return;
+    processBtn.disabled = true;
+    setStatus('Reading workbook…');
+    warnBox.classList.remove('show');
+    warnList.innerHTML = '';
+    setActivePipe(2);
+
+    const reader = new FileReader();
+    reader.onerror = () => { setStatus('Could not read that file.', 'err'); processBtn.disabled = false; };
+    reader.onload = (e) => {
+      try{
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const sheetName = wb.SheetNames[0];
+        const sheet = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+
+        if (rows.length < 2){
+          setStatus('That workbook has no data rows below the header.', 'err');
+          processBtn.disabled = false;
+          return;
+        }
+
+        setStatus('Extracting columns A, B, H, U, V, Y, Z, AJ, AT…');
+        setActivePipe(3);
+
+        const idx = {
+          reqNo: colIdx('A'), reqDate: colIdx('B'), items: colIdx('H'),
+          quoted: colIdx('U'), negotiated: colIdx('V'), poNo: colIdx('Y'),
+          poDate: colIdx('Z'), vendor: colIdx('AJ'), raiser: colIdx('AT')
+        };
+        const maxIdxNeeded = Math.max(...Object.values(idx));
+
+        const warnings = [];
+        if ((rows[0] || []).length <= maxIdxNeeded){
+          warnings.push('The sheet has fewer columns than expected (needs at least column AT) — missing columns were treated as blank.');
+        }
+
+        const records = [];
+        for (let r = 1; r < rows.length; r++){
+          const row = rows[r] || [];
+          const reqNoVal = cleanText(row[idx.reqNo]);
+          if (isBlankToken(reqNoVal)) continue;
+
+          const poRaw = cleanText(row[idx.poNo]);
+          const poVal = isBlankToken(poRaw) ? 'No PO Yet' : poRaw;
+
+          records.push({
+            reqNo: reqNoVal,
+            poNo: poVal,
+            raiser: cleanText(row[idx.raiser]),
+            items: cleanText(row[idx.items]),
+            reqDate: cleanText(row[idx.reqDate]),
+            poDate: cleanText(row[idx.poDate]),
+            quoted: cleanNumber(row[idx.quoted]),
+            negotiated: cleanNumber(row[idx.negotiated]),
+            vendor: cleanText(row[idx.vendor])
+          });
+        }
+
+        if (records.length === 0){
+          setStatus('No usable rows found — check that requisition numbers are in column A.', 'err');
+          processBtn.disabled = false;
+          return;
+        }
+
+        setStatus('Grouping by requisition + PO number…');
+        setActivePipe(4);
+
+        // group by reqNo + poNo, preserving first-seen order
+        const groups = new Map();
+        const order = [];
+        for (const rec of records){
+          const key = rec.reqNo + '\u0001' + rec.poNo;
+          if (!groups.has(key)){
+            groups.set(key, {
+              reqNo: rec.reqNo, poNo: rec.poNo,
+              raiserSet: new Set(), itemsSet: new Set(), vendorSet: new Set(),
+              reqDate: rec.reqDate, poDate: rec.poDate,
+              quoted: 0, negotiated: 0
+            });
+            order.push(key);
+          }
+          const g = groups.get(key);
+          if (!isBlankToken(rec.raiser)) g.raiserSet.add(rec.raiser);
+          if (!isBlankToken(rec.items)) g.itemsSet.add(rec.items);
+          if (!isBlankToken(rec.vendor)) g.vendorSet.add(rec.vendor);
+          g.quoted += rec.quoted;
+          g.negotiated += rec.negotiated;
+        }
+
+        const reportRows = order.map(key => {
+          const g = groups.get(key);
+          return {
+            raiser: Array.from(g.raiserSet).join(', '),
+            reqNo: g.reqNo,
+            items: Array.from(g.itemsSet).join(', '),
+            reqDate: g.reqDate,
+            forwarded: '',
+            poNo: g.poNo === 'No PO Yet' ? '' : g.poNo,
+            poDate: g.poDate,
+            quoted: g.quoted,
+            negotiated: g.negotiated,
+            vendor: Array.from(g.vendorSet).join(', ')
+          };
+        });
+
+        setStatus('Writing formulas and building workbook…');
+        setActivePipe(5);
+        buildOutputWorkbook(reportRows, currentFile.name);
+
+        if (warnings.length){
+          warnings.forEach(w => {
+            const li = document.createElement('li');
+            li.textContent = w;
+            warnList.appendChild(li);
+          });
+          warnBox.classList.add('show');
+        }
+
+        renderResults(reportRows, records.length);
+        setStatus('Report ready — ' + reportRows.length + ' grouped rows.', 'ok');
+      } catch(err){
+        console.error(err);
+        setStatus('Something went wrong reading that workbook: ' + err.message, 'err');
+      } finally {
+        processBtn.disabled = false;
+      }
+    };
+    reader.readAsArrayBuffer(currentFile);
+  });
+
+  function buildOutputWorkbook(reportRows, sourceName){
+    const header = ['Raiser','Req Number','Items Name','Req Date','Forwarded to me','PO Number','PO Date','Quoted Price','Negotiated Price','Vendor Name','Savings','% of Savings'];
+    const aoa = [header];
+    reportRows.forEach(r => {
+      aoa.push([r.raiser, r.reqNo, r.items, r.reqDate, r.forwarded, r.poNo, r.poDate, r.quoted, r.negotiated, r.vendor, null, null]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // inject live formulas for Savings (K) and % of Savings (L)
+    for (let i = 0; i < reportRows.length; i++){
+      const rowNum = i + 2; // 1-based, header is row 1
+      const kRef = 'K' + rowNum;
+      const lRef = 'L' + rowNum;
+      ws[kRef] = { t: 'n', f: `H${rowNum}-I${rowNum}`, z: '#,##0.00' };
+      ws[lRef] = { t: 'n', f: `IF(H${rowNum}=0,0,K${rowNum}/H${rowNum})`, z: '0.00%' };
+    }
+    // number formats for quoted/negotiated
+    for (let i = 0; i < reportRows.length; i++){
+      const rowNum = i + 2;
+      ['H','I'].forEach(col => {
+        const ref = col + rowNum;
+        if (ws[ref]) ws[ref].z = '#,##0.00';
+      });
+    }
+
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 15 }, { wch: 45 }, { wch: 12 }, { wch: 15 },
+      { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+      { wch: 15 }, { wch: 12 }
+    ];
+    ws['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:reportRows.length, c:11} });
+
+    const wbOut = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wbOut, ws, 'Boss Report');
+    const wbArray = XLSX.write(wbOut, { bookType: 'xlsx', type: 'array' });
+    outputWorkbookBlob = new Blob([wbArray], { type: 'application/octet-stream' });
+
+    const base = sourceName.replace(/\.(xlsx|xls)$/i, '');
+    outputFileName = 'Boss_Report_Savings_Ready.xlsx';
+    dlFileName.textContent = outputFileName;
+  }
+
+  function renderResults(reportRows, sourceRowCount){
+    const totalQuoted = reportRows.reduce((s,r) => s + r.quoted, 0);
+    const totalNegotiated = reportRows.reduce((s,r) => s + r.negotiated, 0);
+    const totalSavings = totalQuoted - totalNegotiated;
+    const pctSavings = totalQuoted > 0 ? (totalSavings / totalQuoted * 100) : 0;
+    const openPOs = reportRows.filter(r => r.poNo === '').length;
+
+    resultsRef.textContent = sourceRowCount + ' source rows → ' + reportRows.length + ' report rows';
+
+    const specs = [
+      { label:'source rows', value: sourceRowCount, cls:'' },
+      { label:'grouped rows', value: reportRows.length, cls:'' },
+      { label:'awaiting po', value: openPOs, cls: openPOs ? 'red' : '' },
+      { label:'total quoted', value: totalQuoted.toLocaleString(undefined,{maximumFractionDigits:0}), cls:'' },
+      { label:'total negotiated', value: totalNegotiated.toLocaleString(undefined,{maximumFractionDigits:0}), cls:'' },
+      { label:'net savings', value: totalSavings.toLocaleString(undefined,{maximumFractionDigits:0}), cls:'good' },
+      { label:'% savings', value: pctSavings.toFixed(2)+'%', cls:'good' }
+    ];
+    specSheet.innerHTML = specs.map(s => `
+      <div class="spec">
+        <div class="label">${s.label}</div>
+        <div class="value ${s.cls}">${s.value}</div>
+      </div>`).join('');
+
+    const cols = ['Raiser','Req Number','Items','PO Number','Quoted','Negotiated','Savings'];
+    let thead = '<thead><tr>' + cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead>';
+    let tbody = '<tbody>' + reportRows.slice(0,8).map(r => {
+      const savings = r.quoted - r.negotiated;
+      return '<tr>' + [
+        r.raiser || '—', r.reqNo, r.items || '—', r.poNo || '—',
+        r.quoted.toLocaleString(undefined,{maximumFractionDigits:2}),
+        r.negotiated.toLocaleString(undefined,{maximumFractionDigits:2}),
+        savings.toLocaleString(undefined,{maximumFractionDigits:2})
+      ].map(v=>`<td>${v}</td>`).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    previewTable.innerHTML = thead + tbody;
+
+    resultsPanel.classList.add('show');
+  }
+
+  downloadBtn.addEventListener('click', () => {
+    if (!outputWorkbookBlob) return;
+    const url = URL.createObjectURL(outputWorkbookBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outputFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+
+})();
+</script>
+
+</body>
+</html>
